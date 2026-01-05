@@ -2,6 +2,7 @@ package bte;
 
 import javafx.application.Application;
 import javafx.scene.Scene;
+import javafx.scene.input.KeyCode;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.web.HTMLEditor;
 import javafx.stage.FileChooser;
@@ -9,6 +10,8 @@ import javafx.stage.Stage;
 import javafx.scene.control.Menu;
 import javafx.scene.control.MenuBar;
 import javafx.scene.control.MenuItem;
+import javafx.scene.input.KeyCode;
+
 
 import java.io.File;
 import java.io.IOException;
@@ -46,10 +49,27 @@ public class MainApp extends Application {
 
         // 3. Setup the Scene
         Scene scene = new Scene(root, 1000, 700);
-
+        scene.setOnKeyPressed( event -> {
+            if (event.isControlDown()  && event.getCode() == KeyCode.S) {
+                saveOrSaveAs(stage);
+                event.consume();
+            }
+        });
         stage.setTitle("Burak's Word Application");
         stage.setScene(scene);
         stage.show();
+    }
+
+    private void saveOrSaveAs(Stage stage) {
+        if (currentFile != null) {
+            try {
+                Files.writeString(currentFile.toPath(),editor.getHtmlText());
+            } catch (IOException e) {
+                e.printStackTrace();
+            }
+        } else {
+            saveFile(stage);
+        }
     }
 
     private void openFile(Stage stage) {
