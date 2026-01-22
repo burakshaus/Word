@@ -3,7 +3,6 @@ package bte;
 import javafx.application.Application;
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
-import javafx.geometry.Pos;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.input.KeyCode;
@@ -11,7 +10,6 @@ import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
 import javafx.scene.layout.HBox;
-import javafx.scene.layout.Priority;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
 import javafx.stage.FileChooser;
@@ -22,14 +20,11 @@ import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 
 import org.fxmisc.richtext.InlineCssTextArea;
-import org.fxmisc.richtext.model.StyleSpans;
-import org.fxmisc.richtext.model.StyleSpansBuilder;
 
 import javafx.print.PrinterJob;
+import javafx.scene.effect.DropShadow;
 
 import java.io.*;
-import java.util.Collection;
-import java.util.Collections;
 
 public class MainApp extends Application {
 
@@ -50,6 +45,10 @@ public class MainApp extends Application {
     private ComboBox<String> fontFamilyCombo;
     private ComboBox<Integer> fontSizeCombo;
     private ColorPicker textColorPicker;
+    private ToggleButton alignLeftBtn;
+    private ToggleButton alignCenterBtn;
+    private ToggleButton alignRightBtn;
+    private ToggleButton alignJustifyBtn;
 
     @Override
     public void start(Stage stage) {
@@ -116,6 +115,13 @@ public class MainApp extends Application {
 
         editor.setPrefWidth(PAGE_WIDTH - (MARGIN * 2));
         editor.setPrefHeight(PAGE_HEIGHT - (MARGIN * 2));
+
+        DropShadow shadow = new DropShadow();
+        shadow.setRadius(15);
+        shadow.setOffsetX(5);
+        shadow.setOffsetY(5);
+        shadow.setColor(Color.gray(0.4));
+        pageContainer.setEffect(shadow);
 
         return pageContainer;
     }
@@ -201,8 +207,16 @@ public class MainApp extends Application {
         selectAllItem.setAccelerator(new KeyCodeCombination(KeyCode.A, KeyCombination.CONTROL_DOWN));
         selectAllItem.setOnAction(e -> editor.selectAll());
 
+        MenuItem findItem = new MenuItem("Find...");
+        findItem.setAccelerator(new KeyCodeCombination(KeyCode.F, KeyCombination.CONTROL_DOWN));
+        findItem.setOnAction(e -> showFindDialog(stage));
+
+        MenuItem replaceItem = new MenuItem("Replace...");
+        replaceItem.setAccelerator(new KeyCodeCombination(KeyCode.H, KeyCombination.CONTROL_DOWN));
+        replaceItem.setOnAction(e -> showReplaceDialog(stage));
+
         editMenu.getItems().addAll(undoItem, redoItem, new SeparatorMenuItem(), cutItem, copyItem, pasteItem,
-                new SeparatorMenuItem(), selectAllItem);
+                new SeparatorMenuItem(), selectAllItem, findItem, replaceItem);
 
         // Help Menu
         Menu helpMenu = new Menu("Help");
@@ -255,14 +269,248 @@ public class MainApp extends Application {
         textColorPicker.setTooltip(new Tooltip("Text Color"));
         textColorPicker.setOnAction(e -> applyStyle());
 
+        alignLeftBtn = new ToggleButton("L");
+        alignLeftBtn.setTooltip(new Tooltip("Align Left"));
+        alignLeftBtn.setOnAction(e -> applyAlignment("LEFT"));
+
+        alignCenterBtn = new ToggleButton("C");
+        alignCenterBtn.setTooltip(new Tooltip("Align Center"));
+        alignCenterBtn.setOnAction(e -> applyAlignment("CENTER"));
+
+        alignRightBtn = new ToggleButton("R");
+        alignRightBtn.setTooltip(new Tooltip("Align Right"));
+        alignRightBtn.setOnAction(e -> applyAlignment("RIGHT"));
+
+        alignJustifyBtn = new ToggleButton("J");
+        alignJustifyBtn.setTooltip(new Tooltip("Align Justify"));
+        alignJustifyBtn.setOnAction(e -> applyAlignment("JUSTIFY"));
+
         toolBar.getItems().addAll(
                 boldBtn, italicBtn, underlineBtn,
                 new Separator(),
                 fontFamilyCombo, fontSizeCombo,
                 new Separator(),
-                textColorPicker);
+                textColorPicker,
+                new Separator(),
+                alignLeftBtn, alignCenterBtn, alignRightBtn, alignJustifyBtn);
 
         return toolBar;
+    }
+
+    private void showFindDialog(Stage stage) {
+        Dialog<String> dialog = new Dialog<>();
+        dialog.setTitle("Find");
+        dialog.setHeaderText("Enter text to find:");
+        TextField searchField = new TextField();
+        searchField.setPromptText("Search text ...");
+        dialog.getDialogPane().setContent(searchField);
+        dialog.getDialogPane().getButtonTypes().addAll(ButtonType.OK, ButtonType.CANCEL);
+        dialog.setResultConverter(button -> {
+            if (button == ButtonType.OK) {
+                return searchField.getText();
+            }
+            return null;
+        });
+        dialog.showAndWait().ifPresent(searchText -> {
+            findText(searchText);
+        });
+
+    }
+
+    private void findText(String searchText) {
+        if (searchText == null || searchText.isEmpty()) {
+            return;
+        }
+        String content = editor.getText();
+        int index = content.indexOf(searchText);
+        if (index >= 0) {
+            editor.selectRange(index, index + searchText.length());
+            editor.requestFollowCaret();
+
+        } else {
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Find");
+            alert.setHeaderText(null);
+            alert.setContentText("Text not found: " + searchText);
+            alert.showAndWait();
+        }
+
+    }
+
+    private int lastSearchIndex = 0;
+
+    private void showReplaceDialog(Stage stage) {
+        Dialog<Void> dialog = new Dialog<>();
+        dialog.setTitle("Find and Replace");
+        dialog.setHeaderText(null);
+        dialog.initOwner(stage);
+
+        // Create layout
+        VBox content = new VBox(10);
+        content.setPadding(new Insets(10));
+
+        // Find field
+        HBox findRow = new HBox(10);
+        findRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label findLabel = new Label("Find:");
+        findLabel.setPrefWidth(70);
+        TextField findField = new TextField();
+        findField.setPrefWidth(250);
+        findRow.getChildren().addAll(findLabel, findField);
+
+        // Replace field
+        HBox replaceRow = new HBox(10);
+        replaceRow.setAlignment(javafx.geometry.Pos.CENTER_LEFT);
+        Label replaceLabel = new Label("Replace:");
+        replaceLabel.setPrefWidth(70);
+        TextField replaceField = new TextField();
+        replaceField.setPrefWidth(250);
+        replaceRow.getChildren().addAll(replaceLabel, replaceField);
+
+        // Buttons
+        HBox buttonRow = new HBox(10);
+        buttonRow.setAlignment(javafx.geometry.Pos.CENTER_RIGHT);
+
+        Button findNextBtn = new Button("Find Next");
+        Button replaceBtn = new Button("Replace");
+        Button replaceAllBtn = new Button("Replace All");
+        Button closeBtn = new Button("Close");
+
+        findNextBtn.setOnAction(e -> {
+            String searchText = findField.getText();
+            if (!searchText.isEmpty()) {
+                findNextText(searchText);
+            }
+        });
+
+        replaceBtn.setOnAction(e -> {
+            String searchText = findField.getText();
+            String replaceText = replaceField.getText();
+            if (!searchText.isEmpty()) {
+                replaceCurrentSelection(searchText, replaceText);
+            }
+        });
+
+        replaceAllBtn.setOnAction(e -> {
+            String searchText = findField.getText();
+            String replaceText = replaceField.getText();
+            if (!searchText.isEmpty()) {
+                replaceAllText(searchText, replaceText);
+            }
+        });
+
+        closeBtn.setOnAction(e -> {
+            dialog.close();
+            lastSearchIndex = 0;
+        });
+
+        buttonRow.getChildren().addAll(findNextBtn, replaceBtn, replaceAllBtn, closeBtn);
+
+        content.getChildren().addAll(findRow, replaceRow, buttonRow);
+        dialog.getDialogPane().setContent(content);
+        dialog.getDialogPane().getButtonTypes().add(ButtonType.CLOSE);
+        dialog.getDialogPane().lookupButton(ButtonType.CLOSE).setVisible(false);
+
+        dialog.setOnCloseRequest(e -> lastSearchIndex = 0);
+        dialog.show();
+    }
+
+    private void findNextText(String searchText) {
+        String content = editor.getText();
+        int index = content.indexOf(searchText, lastSearchIndex);
+
+        if (index >= 0) {
+            editor.selectRange(index, index + searchText.length());
+            editor.requestFollowCaret();
+            lastSearchIndex = index + 1;
+        } else if (lastSearchIndex > 0) {
+            // Wrap around to beginning
+            lastSearchIndex = 0;
+            index = content.indexOf(searchText, 0);
+            if (index >= 0) {
+                editor.selectRange(index, index + searchText.length());
+                editor.requestFollowCaret();
+                lastSearchIndex = index + 1;
+            } else {
+                showNotFound(searchText);
+            }
+        } else {
+            showNotFound(searchText);
+        }
+    }
+
+    private void replaceCurrentSelection(String searchText, String replaceText) {
+        String selectedText = editor.getSelectedText();
+        if (selectedText.equals(searchText)) {
+            editor.replaceSelection(replaceText);
+            findNextText(searchText);
+        } else {
+            findNextText(searchText);
+        }
+    }
+
+    private void replaceAllText(String searchText, String replaceText) {
+        String content = editor.getText();
+        int count = 0;
+        int index = 0;
+
+        while ((index = content.indexOf(searchText, index)) >= 0) {
+            count++;
+            index += searchText.length();
+        }
+
+        if (count > 0) {
+            String newContent = content.replace(searchText, replaceText);
+            editor.replaceText(newContent);
+
+            Alert alert = new Alert(Alert.AlertType.INFORMATION);
+            alert.setTitle("Replace All");
+            alert.setHeaderText(null);
+            alert.setContentText("Replaced " + count + " occurrence(s).");
+            alert.showAndWait();
+        } else {
+            showNotFound(searchText);
+        }
+    }
+
+    private void showNotFound(String searchText) {
+        Alert alert = new Alert(Alert.AlertType.INFORMATION);
+        alert.setTitle("Find");
+        alert.setHeaderText(null);
+        alert.setContentText("Text not found: " + searchText);
+        alert.showAndWait();
+    }
+
+    private void applyAlignment(String alignment) {
+        // Toggle button states
+        alignLeftBtn.setSelected(alignment.equals("LEFT"));
+        alignCenterBtn.setSelected(alignment.equals("CENTER"));
+        alignRightBtn.setSelected(alignment.equals("RIGHT"));
+        alignJustifyBtn.setSelected(alignment.equals("JUSTIFY"));
+
+        // Get the current paragraph index
+        int currentParagraph = editor.getCurrentParagraph();
+
+        // Build the CSS style for paragraph alignment
+        String alignStyle;
+        switch (alignment) {
+            case "CENTER":
+                alignStyle = "-fx-text-alignment: center;";
+                break;
+            case "RIGHT":
+                alignStyle = "-fx-text-alignment: right;";
+                break;
+            case "JUSTIFY":
+                alignStyle = "-fx-text-alignment: justify;";
+                break;
+            case "LEFT":
+            default:
+                alignStyle = "-fx-text-alignment: left;";
+                break;
+        }
+
+        // Apply paragraph style to current paragraph
+        editor.setParagraphStyle(currentParagraph, alignStyle);
     }
 
     private HBox createStatusBar() {
