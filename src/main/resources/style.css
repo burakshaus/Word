@@ -1,0 +1,91 @@
+/* Main Containers */
+.root {
+    -fx-accent: #1e88e5; /* Royal Blue */
+    -fx-focus-color: transparent;
+    -fx-faint-focus-color: transparent;
+}
+
+.menu-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 2 10;
+}
+
+.tool-bar {
+    -fx-background-color: #f8f9fa;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 0 0 1 0;
+    -fx-padding: 5 15;
+    -fx-spacing: 8;
+}
+
+/* ScrollPane background */
+.scroll-pane {
+    -fx-background-color: #f1f3f4;
+    -fx-background: #f1f3f4;
+}
+
+/* Status Bar */
+.status-bar {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #e0e0e0;
+    -fx-border-width: 1 0 0 0;
+    -fx-padding: 5 20;
+}
+
+.status-bar .label {
+    -fx-text-fill: #5f6368;
+    -fx-font-size: 11px;
+    -fx-font-family: "Segoe UI", sans-serif;
+}
+
+/* Buttons */
+.button, .toggle-button {
+    -fx-background-color: transparent;
+    -fx-background-radius: 4;
+    -fx-padding: 6;
+    -fx-cursor: hand;
+    -fx-transition: 0.2s;
+}
+
+.button:hover, .toggle-button:hover {
+    -fx-background-color: #e8eaed;
+}
+
+.toggle-button:selected {
+    -fx-background-color: #e3f2fd;
+    -fx-border-color: #1e88e5;
+    -fx-border-width: 1;
+}
+
+.toggle-button:selected .icon {
+    -fx-fill: #1e88e5;
+}
+
+/* Icons */
+.icon {
+    -fx-fill: #444746;
+}
+
+/* ComboBoxes */
+.combo-box {
+    -fx-background-color: #ffffff;
+    -fx-border-color: #dadce0;
+    -fx-border-radius: 4;
+    -fx-background-radius: 4;
+}
+
+.combo-box .list-cell {
+    -fx-padding: 2 5;
+}
+
+/* Color Picker */
+.color-picker {
+    -fx-background-color: transparent;
+    -fx-padding: 0;
+}
+
+.color-picker .color-picker-label {
+    -fx-padding: 0;
+}

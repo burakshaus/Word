@@ -19,12 +19,14 @@ import org.apache.poi.xwpf.usermodel.XWPFDocument;
 import org.apache.poi.xwpf.usermodel.XWPFParagraph;
 import org.apache.poi.xwpf.usermodel.XWPFRun;
 
-import org.fxmisc.richtext.InlineCssTextArea;
+import org.reactfx.util.Either;
 
 import javafx.print.PrinterJob;
 import javafx.scene.effect.DropShadow;
+import javafx.scene.shape.SVGPath;
 
 import java.io.*;
+import java.net.URL;
 
 public class MainApp extends Application {
 
@@ -32,7 +34,7 @@ public class MainApp extends Application {
     private static final double PAGE_HEIGHT = 842;
     private static final double MARGIN = 50;
 
-    private InlineCssTextArea editor;
+    private CustomEditor editor;
     private File currentFile;
     private boolean isDirty = false;
 
@@ -49,11 +51,17 @@ public class MainApp extends Application {
     private ToggleButton alignCenterBtn;
     private ToggleButton alignRightBtn;
     private ToggleButton alignJustifyBtn;
+    private ToggleButton strikeBtn;
+    private ToggleButton superBtn;
+    private ToggleButton subBtn;
+    private ColorPicker highlightPicker;
+    private Button insertImageBtn;
+    private Button insertTableBtn;
 
     @Override
     public void start(Stage stage) {
         // Create the rich text editor
-        editor = new InlineCssTextArea();
+        editor = new CustomEditor();
         editor.setWrapText(true);
         editor.setStyle("-fx-font-family: 'Segoe UI'; -fx-font-size: 14px;");
 
@@ -71,7 +79,7 @@ public class MainApp extends Application {
         MenuBar menuBar = createMenuBar(stage);
 
         // Toolbar
-        ToolBar toolBar = createToolBar();
+        ToolBar toolBar = createToolBar(stage);
 
         VBox topContainer = new VBox(menuBar, toolBar);
         root.setTop(topContainer);
@@ -89,7 +97,13 @@ public class MainApp extends Application {
         // Scene
         Scene scene = new Scene(root, 1000, 700);
 
-        scrollPane.setStyle("-fx-background: #e0e0e0;");
+        // Load CSS
+        URL cssUrl = getClass().getResource("/style.css");
+        if (cssUrl != null) {
+            scene.getStylesheets().add(cssUrl.toExternalForm());
+        }
+
+        scrollPane.getStyleClass().add("scroll-pane");
         // Keyboard shortcuts
         setupKeyboardShortcuts(scene, stage);
 
@@ -142,6 +156,7 @@ public class MainApp extends Application {
 
     private MenuBar createMenuBar(Stage stage) {
         MenuBar menuBar = new MenuBar();
+        menuBar.getStyleClass().add("menu-bar");
 
         // File Menu
         Menu fileMenu = new Menu("File");
@@ -176,7 +191,10 @@ public class MainApp extends Application {
         printItem.setAccelerator(new KeyCodeCombination(KeyCode.P, KeyCombination.CONTROL_DOWN));
         printItem.setOnAction(e -> printDocument(stage));
 
-        fileMenu.getItems().addAll(newItem, openItem, separator, saveItem, saveAsItem, printItem,
+        MenuItem exportPdfItem = new MenuItem("Export to PDF...");
+        exportPdfItem.setOnAction(e -> exportToPdf(stage));
+
+        fileMenu.getItems().addAll(newItem, openItem, separator, saveItem, saveAsItem, printItem, exportPdfItem,
                 new SeparatorMenuItem(),
                 exitItem);
 
@@ -224,28 +242,44 @@ public class MainApp extends Application {
         aboutItem.setOnAction(e -> showAbout());
         helpMenu.getItems().add(aboutItem);
 
-        menuBar.getMenus().addAll(fileMenu, editMenu, helpMenu);
+        menuBar.getMenus().addAll(fileMenu, editMenu, createInsertMenu(stage), helpMenu);
         return menuBar;
     }
 
-    private ToolBar createToolBar() {
+    private Menu createInsertMenu(Stage stage) {
+        Menu insertMenu = new Menu("Insert");
+
+        MenuItem imageItem = new MenuItem("Image...");
+        imageItem.setOnAction(e -> insertImage(stage));
+
+        MenuItem tableItem = new MenuItem("Table...");
+        tableItem.setOnAction(e -> insertTable(stage));
+
+        insertMenu.getItems().addAll(imageItem, tableItem);
+        return insertMenu;
+    }
+
+    private ToolBar createToolBar(Stage stage) {
         ToolBar toolBar = new ToolBar();
+        toolBar.getStyleClass().add("tool-bar");
 
         // Bold button
-        boldBtn = new ToggleButton("B");
-        boldBtn.setStyle("-fx-font-weight: bold;");
+        boldBtn = new ToggleButton();
+        boldBtn.setGraphic(createIcon(
+                "M15.6 10.79c.97-.67 1.65-1.77 1.65-2.79 0-2.26-1.75-4-4-4H7v14h7.04c2.09 0 3.71-1.7 3.71-3.79 0-1.52-.86-2.82-2.15-3.42zM10.21 6.27h2.25c.95 0 1.72.77 1.72 1.72s-.77 1.72-1.72 1.72h-2.25V6.27zm2.85 9.46h-2.85v-3.46h2.85c1.02 0 1.85.83 1.85 1.85s-.83 1.61-1.85 1.61z"));
         boldBtn.setTooltip(new Tooltip("Bold (Ctrl+B)"));
         boldBtn.setOnAction(e -> applyStyle());
 
         // Italic button
-        italicBtn = new ToggleButton("I");
-        italicBtn.setStyle("-fx-font-style: italic;");
+        italicBtn = new ToggleButton();
+        italicBtn.setGraphic(createIcon("M10 4v3h2.21l-3.42 8H6v3h8v-3h-2.21l3.42-8H18V4z"));
         italicBtn.setTooltip(new Tooltip("Italic (Ctrl+I)"));
         italicBtn.setOnAction(e -> applyStyle());
 
         // Underline button
-        underlineBtn = new ToggleButton("U");
-        underlineBtn.setStyle("-fx-underline: true;");
+        underlineBtn = new ToggleButton();
+        underlineBtn.setGraphic(createIcon(
+                "M12 17c3.31 0 6-2.69 6-6V3h-2.5v8c0 1.93-1.57 3.5-3.5 3.5S8.5 12.93 8.5 11V3H6v8c0 3.31 2.69 6 6 6zm-7 2v2h14v-2H5z"));
         underlineBtn.setTooltip(new Tooltip("Underline (Ctrl+U)"));
         underlineBtn.setOnAction(e -> applyStyle());
 
@@ -264,33 +298,94 @@ public class MainApp extends Application {
         fontSizeCombo.setTooltip(new Tooltip("Font Size"));
         fontSizeCombo.setOnAction(e -> applyStyle());
 
+        // Strikethrough
+        strikeBtn = new ToggleButton();
+        strikeBtn.setGraphic(createIcon("M10 19h4v-3h-4v3zM5 4v3h5v3h4V7h5V4H5zM3 14h18v-2H3v2z"));
+        strikeBtn.setTooltip(new Tooltip("Strikethrough"));
+        strikeBtn.setOnAction(e -> applyStyle());
+
+        // Superscript
+        superBtn = new ToggleButton();
+        superBtn.setGraphic(createIcon(
+                "M19 9h2V4h-3v2h1v3zM11 6h5v3h-5zM4 6h5v3H4zm7 7h5v3h-5zm-7 0h5v3H4zm7 7h5v3h-5zm-7 0h5v3H4z"));
+        superBtn.setTooltip(new Tooltip("Superscript"));
+        superBtn.setOnAction(e -> {
+            if (superBtn.isSelected())
+                subBtn.setSelected(false);
+            applyStyle();
+        });
+
+        // Subscript
+        subBtn = new ToggleButton();
+        subBtn.setGraphic(createIcon(
+                "M19 14h2v5h-3v-2h1v-3zM11 6h5v3h-5zM4 6h5v3H4zm7 7h5v3h-5zm-7 0h5v3H4zm7 7h5v3h-5zm-7 0h5v3H4z"));
+        subBtn.setTooltip(new Tooltip("Subscript"));
+        subBtn.setOnAction(e -> {
+            if (subBtn.isSelected())
+                superBtn.setSelected(false);
+            applyStyle();
+        });
+
         // Text color
         textColorPicker = new ColorPicker(Color.BLACK);
+        textColorPicker.getStyleClass().add("color-picker");
         textColorPicker.setTooltip(new Tooltip("Text Color"));
         textColorPicker.setOnAction(e -> applyStyle());
 
-        alignLeftBtn = new ToggleButton("L");
+        // Highlight color
+        highlightPicker = new ColorPicker(Color.TRANSPARENT);
+        highlightPicker.getStyleClass().add("color-picker");
+        highlightPicker.setTooltip(new Tooltip("Highlight Color"));
+        highlightPicker.setOnAction(e -> applyStyle());
+
+        alignLeftBtn = new ToggleButton();
+        alignLeftBtn
+                .setGraphic(createIcon("M15 15H3v2h12v-2zm0-8H3v2h12V7zM3 13h18v-2H3v2zm0 8h18v-2H3v2zM3 3v2h18V3H3z"));
         alignLeftBtn.setTooltip(new Tooltip("Align Left"));
         alignLeftBtn.setOnAction(e -> applyAlignment("LEFT"));
 
-        alignCenterBtn = new ToggleButton("C");
+        alignCenterBtn = new ToggleButton();
+        alignCenterBtn
+                .setGraphic(createIcon("M3 21h18v-2H3v2zm4-4h10v-2H7v2zm-4-4h18v-2H3v2zm4-4h10V7H7v2zM3 3v2h18V3H3z"));
         alignCenterBtn.setTooltip(new Tooltip("Align Center"));
         alignCenterBtn.setOnAction(e -> applyAlignment("CENTER"));
 
-        alignRightBtn = new ToggleButton("R");
+        alignRightBtn = new ToggleButton();
+        alignRightBtn
+                .setGraphic(createIcon("M3 21h18v-2H3v2zm6-4h12v-2H9v2zm-6-4h18v-2H3v2zm6-4h12V7H9v2zM3 3v2h18V3H3z"));
         alignRightBtn.setTooltip(new Tooltip("Align Right"));
         alignRightBtn.setOnAction(e -> applyAlignment("RIGHT"));
 
-        alignJustifyBtn = new ToggleButton("J");
+        alignJustifyBtn = new ToggleButton();
+        alignJustifyBtn
+                .setGraphic(createIcon("M3 21h18v-2H3v2zM3 17h18v-2H3v2zm0-4h18v-2H3v2zm0-4h18V7H3v2zm0-6v2h18V3H3z"));
         alignJustifyBtn.setTooltip(new Tooltip("Align Justify"));
         alignJustifyBtn.setOnAction(e -> applyAlignment("JUSTIFY"));
 
+        // Image button
+        insertImageBtn = new Button();
+        insertImageBtn.setGraphic(createIcon(
+                "M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"));
+        insertImageBtn.setTooltip(new Tooltip("Insert Image"));
+        insertImageBtn.setOnAction(e -> insertImage(stage));
+
+        // Table button
+        insertTableBtn = new Button();
+        insertTableBtn.setGraphic(createIcon(
+                "M20 2H4c-1.1 0-2 .9-2 2v16c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2zM8 20H4v-4h4v4zm0-6H4v-4h4v4zm0-6H4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4zm6 12h-4v-4h4v4zm0-6h-4v-4h4v4zm0-6h-4V4h4v4z"));
+        insertTableBtn.setTooltip(new Tooltip("Insert Table"));
+        insertTableBtn.setOnAction(e -> insertTable(stage));
+
         toolBar.getItems().addAll(
-                boldBtn, italicBtn, underlineBtn,
+                boldBtn, italicBtn, underlineBtn, strikeBtn,
+                new Separator(),
+                superBtn, subBtn,
                 new Separator(),
                 fontFamilyCombo, fontSizeCombo,
                 new Separator(),
-                textColorPicker,
+                textColorPicker, highlightPicker,
+                new Separator(),
+                insertImageBtn, insertTableBtn,
                 new Separator(),
                 alignLeftBtn, alignCenterBtn, alignRightBtn, alignJustifyBtn);
 
@@ -515,8 +610,8 @@ public class MainApp extends Application {
 
     private HBox createStatusBar() {
         HBox statusBar = new HBox(30);
+        statusBar.getStyleClass().add("status-bar");
         statusBar.setPadding(new Insets(5, 10, 5, 10));
-        statusBar.setStyle("-fx-background-color: #f0f0f0; -fx-border-color: #ccc; -fx-border-width: 1 0 0 0;");
 
         wordCountLabel = new Label("Words: 0");
         charCountLabel = new Label("Characters: 0");
@@ -584,9 +679,27 @@ public class MainApp extends Application {
             style.append("-fx-underline: true; ");
         }
 
+        // Strikethrough
+        if (strikeBtn.isSelected()) {
+            style.append("-fx-strikethrough: true; ");
+        }
+
+        // Super/Subscript
+        if (superBtn.isSelected()) {
+            style.append("-fx-font-size: 10px; -fx-translate-y: -4px; ");
+        } else if (subBtn.isSelected()) {
+            style.append("-fx-font-size: 10px; -fx-translate-y: 2px; ");
+        }
+
         // Color
         Color color = textColorPicker.getValue();
         style.append("-fx-fill: ").append(toRgbString(color)).append("; ");
+
+        // Highlight
+        Color highlight = highlightPicker.getValue();
+        if (highlight != null && !highlight.equals(Color.TRANSPARENT)) {
+            style.append("-rtfx-background-color: ").append(toRgbString(highlight)).append("; ");
+        }
 
         return style.toString();
     }
@@ -682,11 +795,10 @@ public class MainApp extends Application {
     }
 
     private void saveAsDocx(File file) {
-        XWPFDocument document = new XWPFDocument();
-        XWPFParagraph paragraph = document.createParagraph();
-        XWPFRun run = paragraph.createRun();
-        run.setText(editor.getText());
-        try {
+        try (XWPFDocument document = new XWPFDocument()) {
+            XWPFParagraph paragraph = document.createParagraph();
+            XWPFRun run = paragraph.createRun();
+            run.setText(editor.getText());
             document.write(new FileOutputStream(file));
         } catch (IOException e) {
             showError("Error saving file", e.getMessage());
@@ -767,6 +879,50 @@ public class MainApp extends Application {
         alert.setHeaderText(title);
         alert.setContentText(message);
         alert.showAndWait();
+    }
+
+    private void insertImage(Stage stage) {
+        ContentInserter.insertImage(editor, stage);
+        isDirty = true;
+    }
+
+    private void insertTable(Stage stage) {
+        ContentInserter.insertTable(editor);
+        isDirty = true;
+    }
+
+    private void exportToPdf(Stage stage) {
+        FileChooser chooser = new FileChooser();
+        chooser.setTitle("Export to PDF");
+        chooser.getExtensionFilters().add(new FileChooser.ExtensionFilter("PDF Files", "*.pdf"));
+        if (currentFile != null) {
+            String name = currentFile.getName().substring(0, currentFile.getName().lastIndexOf("."));
+            chooser.setInitialFileName(name + ".pdf");
+        } else {
+            chooser.setInitialFileName("document.pdf");
+        }
+
+        File file = chooser.showSaveDialog(stage);
+        if (file != null) {
+            try {
+                PDFExporter.export(editor, file);
+                Alert alert = new Alert(Alert.AlertType.INFORMATION);
+                alert.setTitle("Export Successful");
+                alert.setHeaderText(null);
+                alert.setContentText("Document has been exported to PDF successfully.");
+                alert.showAndWait();
+            } catch (Exception e) {
+                showError("Export Error", "Could not export to PDF: " + e.getMessage());
+                e.printStackTrace();
+            }
+        }
+    }
+
+    private SVGPath createIcon(String content) {
+        SVGPath icon = new SVGPath();
+        icon.setContent(content);
+        icon.getStyleClass().add("icon");
+        return icon;
     }
 
     public static void main(String[] args) {
