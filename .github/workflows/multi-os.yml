@@ -1,0 +1,29 @@
+name: Cross-Platform Test
+
+on:
+  push:
+    branches: [ "main" ]
+  pull_request:
+    branches: [ "main" ]
+
+jobs:
+  test-matrix:
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest] # 3 İşletim Sistemi
+
+    steps:
+    - uses: actions/checkout@v4
+    
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    - name: Build with Maven
+      # Linux/Mac ve Windows arasındaki komut farkını yönetmek gerekmez, mvn heryerde aynıdır.
+      # Ancak Windows bazen karakter kodlamasında sorun çıkarabilir, bu iyi bir testtir.
+      run: mvn -B package --file pom.xml -DskipTests
