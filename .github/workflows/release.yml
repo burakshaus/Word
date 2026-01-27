@@ -1,16 +1,30 @@
-name: Publish Release
+name: Generate Installers
 
 on:
   push:
     tags:
-      - 'v*'
+      - 'v*' # Sadece v1.0.0, v2.0.0 gibi etiketlerde çalışır
 
 permissions:
   contents: write
 
 jobs:
-  release:
-    runs-on: ubuntu-latest
+  build-installers:
+    name: Build for ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        # Çapraz platform matrisi: Aynı anda 3 makine çalışacak
+        include:
+          - os: ubuntu-latest
+            type: deb
+            suffix: .deb
+          - os: windows-latest
+            type: exe
+            suffix: .exe
+          - os: macos-latest
+            type: dmg
+            suffix: .dmg
 
     steps:
     - uses: actions/checkout@v4
@@ -18,16 +32,43 @@ jobs:
     - name: Set up JDK 21
       uses: actions/setup-java@v4
       with:
-        java-version: '21'  
+        java-version: '21'
         distribution: 'temurin'
         cache: maven
 
-    - name: Build with Maven
+    # 1. Adım: Maven ile Fat Jar (Tek Dosya) Oluştur
+    - name: Build Fat Jar
       run: mvn -B package --file pom.xml -DskipTests
 
-    - name: Create Release
+    # 2. Adım: JPackage ile Installer Oluştur
+    - name: Create Installer
+      shell: bash
+      run: |
+        # Sürüm numarasını etiketten temizle (v1.0.0 -> 1.0.0)
+        VERSION=${GITHUB_REF#refs/tags/v}
+        
+        echo "Building installer for version: $VERSION"
+        
+        # JPackage Komutu
+        # Not: İkon eklemek istersen '--icon' satırını yorumdan çıkarman gerekir.
+        # Şu an hata vermemesi için ikonsuz standart kurulum yapıyoruz.
+        
+        jpackage \
+          --input target/ \
+          --name "WordProcessor" \
+          --main-jar WordProcessor-1.0-SNAPSHOT.jar \
+          --main-class bte.Launcher \
+          --app-version "$VERSION" \
+          --vendor "BurakSoft" \
+          --copyright "Copyright 2026 Burak" \
+          --type ${{ matrix.type }} \
+          --dest output/ \
+          --java-options '--enable-preview'
+
+    # 3. Adım: Oluşan Dosyaları Release Sayfasına Yükle
+    - name: Upload Installer to Release
       uses: softprops/action-gh-release@v1
-      if: startsWith(github.ref, 'refs/tags/')
       with:
-        files: target/*.jar
-        generate_release_notes: true
+        files: output/*${{ matrix.suffix }}
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
