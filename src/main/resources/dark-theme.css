@@ -1,0 +1,57 @@
+/* Ana Arka Plan */
+.root {
+    -fx-base: #2b2b2b;
+    -fx-background: #2b2b2b;
+    -fx-control-inner-background: #2b2b2b;
+    -fx-background-color: #2b2b2b;
+}
+
+/* Yazılar */
+.label, .text, .text-area, .text-field {
+    -fx-text-fill: #e0e0e0; /* Kırık beyaz */
+    -fx-prompt-text-fill: #808080;
+}
+
+/* Editör Alanı (Webview/HtmlEditor iç kısmı CSS ile zor olduğu için çerçevesini yapıyoruz) */
+.html-editor {
+    -fx-background-color: #3c3f41;
+    -fx-border-color: #555;
+}
+
+/* Araç Çubuğu (Toolbar) */
+.tool-bar {
+    -fx-background-color: #3c3f41;
+    -fx-border-color: #1e1e1e;
+    -fx-border-width: 0 0 1 0; /* Sadece alt çizgi */
+}
+
+/* Butonlar */
+.button, .toggle-button {
+    -fx-background-color: #4c5052;
+    -fx-text-fill: white;
+    -fx-border-color: #5f6366;
+    -fx-border-radius: 3;
+    -fx-background-radius: 3;
+}
+
+.button:hover, .toggle-button:hover {
+    -fx-background-color: #5f6366; /* Üzerine gelince biraz açıl */
+}
+
+.button:pressed, .toggle-button:selected {
+    -fx-background-color: #365880; /* Tıklanınca mavi ton */
+}
+
+/* Kaydırma Çubukları (Scrollbar) */
+.scroll-bar {
+    -fx-background-color: #2b2b2b;
+}
+.scroll-bar .thumb {
+    -fx-background-color: #555;
+}
+
+/* Tablo Seçici Popup */
+.popup-control {
+    -fx-background-color: #3c3f41;
+    -fx-text-fill: white;
+}

@@ -376,7 +376,31 @@ public class MainApp extends Application {
         insertTableBtn.setTooltip(new Tooltip("Insert Table"));
         // Artık picker'ı çağırıyoruz ve butonu (tableButton) parametre veriyoruz
         insertTableBtn.setOnAction(e -> ContentInserter.openTablePicker(editor, insertTableBtn));
+
+        javafx.scene.control.ToggleButton themeToggle = new javafx.scene.control.ToggleButton("🌙");
+        themeToggle.setStyle("-fx-font-size: 14px; -fx-min-width: 40px;");
+
+        themeToggle.setOnAction(e -> {
+            javafx.scene.Scene scene = themeToggle.getScene(); // Sahneyi al
+
+            if (themeToggle.isSelected()) {
+                // 🌑 Karanlık Modu Aç
+                themeToggle.setText("☀️");
+                // CSS dosyasını sahneye ekle
+                scene.getStylesheets().add(getClass().getResource("/dark-theme.css").toExternalForm());
+            } else {
+                // ☀️ Aydınlık Moda Dön
+                themeToggle.setText("🌙");
+                // CSS dosyasını sahneden çıkar
+                scene.getStylesheets().remove(getClass().getResource("/dark-theme.css").toExternalForm());
+            }
+        });
+
         toolBar.getItems().addAll(
+                themeToggle,      // <--- BAK BURAYA, EN BAŞA KOYDUK
+                new Separator(),  // Araya şık bir çizgi çektik
+
+                // Diğerleri sırayla devam ediyor...
                 boldBtn, italicBtn, underlineBtn, strikeBtn,
                 new Separator(),
                 superBtn, subBtn,
@@ -387,8 +411,10 @@ public class MainApp extends Application {
                 new Separator(),
                 insertImageBtn, insertTableBtn,
                 new Separator(),
-                alignLeftBtn, alignCenterBtn, alignRightBtn, alignJustifyBtn);
+                alignLeftBtn, alignCenterBtn, alignRightBtn, alignJustifyBtn
 
+                
+        );
         return toolBar;
     }
 
@@ -887,7 +913,7 @@ public class MainApp extends Application {
     }
 
     private void insertTable(Stage stage) {
-        insertTableBtn.setOnAction(e -> ContentInserter.openTablePicker(editor, insertTableBtn));
+        ContentInserter.openTablePicker(editor, insertTableBtn);
         isDirty = true;
     }
 
