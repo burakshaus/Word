@@ -1,6 +1,7 @@
 package bte;
 
 import javafx.application.Application;
+
 import javafx.collections.FXCollections;
 import javafx.geometry.Insets;
 import javafx.scene.Scene;
@@ -9,6 +10,7 @@ import javafx.scene.input.KeyCode;
 import javafx.scene.input.KeyCodeCombination;
 import javafx.scene.input.KeyCombination;
 import javafx.scene.layout.BorderPane;
+import javafx.scene.layout.GridPane;
 import javafx.scene.layout.HBox;
 import javafx.scene.layout.VBox;
 import javafx.scene.paint.Color;
@@ -27,6 +29,8 @@ import javafx.scene.shape.SVGPath;
 
 import java.io.*;
 import java.net.URL;
+
+
 
 public class MainApp extends Application {
 
@@ -57,6 +61,13 @@ public class MainApp extends Application {
     private ColorPicker highlightPicker;
     private Button insertImageBtn;
     private Button insertTableBtn;
+    
+    private final Color[] WORD_COLORS = {
+        Color.web("#000000"), Color.web("#44546A"), Color.web("#5B9BD5"), Color.web("#ED7D31"), Color.web("#A5A5A5"),
+        Color.web("#FFC000"), Color.web("#4472C4"), Color.web("#70AD47"), Color.web("#FF0000"), Color.web("#7030A0"),
+        Color.web("#F2F2F2"), Color.web("#D6DCE4"), Color.web("#DDEBF7"), Color.web("#FBE5D6"), Color.web("#E7E6E6"),
+        Color.web("#FFF2CC"), Color.web("#D9E1F2"), Color.web("#E2EFDA"), Color.web("#FFCCCC"), Color.web("#EAD1DC")
+    };
 
     @Override
     public void start(Stage stage) {
@@ -118,6 +129,9 @@ public class MainApp extends Application {
 
         editor.requestFocus();
     }
+    
+    
+    
 
     private VBox createPageView() {
         VBox pageContainer = new VBox();
@@ -263,6 +277,10 @@ public class MainApp extends Application {
         ToolBar toolBar = new ToolBar();
         toolBar.getStyleClass().add("tool-bar");
 
+
+        textColorPicker = new ColorPicker(Color.BLACK);
+        highlightPicker = new ColorPicker(Color.TRANSPARENT);
+
         // Bold button
         boldBtn = new ToggleButton();
         boldBtn.setGraphic(createIcon(
@@ -325,18 +343,21 @@ public class MainApp extends Application {
                 superBtn.setSelected(false);
             applyStyle();
         });
+     // 1. Yazı Rengi Butonu (A harfi ikonu)
+        MenuButton wordColorBtn = createWordColorButton(
+            "M0 20h24v4H0z M11 3L5.5 17h2.25l1.12-3h6.25l1.12 3h2.25L13 3h-2zm-1.38 11L12 5.67 14.38 14H9.62z", // A harfi path
+            Color.RED, 
+            false // Highlight değil
+        );
+        wordColorBtn.setTooltip(new Tooltip("Yazı Rengi"));
 
-        // Text color
-        textColorPicker = new ColorPicker(Color.BLACK);
-        textColorPicker.getStyleClass().add("color-picker");
-        textColorPicker.setTooltip(new Tooltip("Text Color"));
-        textColorPicker.setOnAction(e -> applyStyle());
-
-        // Highlight color
-        highlightPicker = new ColorPicker(Color.TRANSPARENT);
-        highlightPicker.getStyleClass().add("color-picker");
-        highlightPicker.setTooltip(new Tooltip("Highlight Color"));
-        highlightPicker.setOnAction(e -> applyStyle());
+        // 2. Highlight Butonu (Kalem ikonu)
+        MenuButton wordHighlightBtn = createWordColorButton(
+            "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z", // Kalem ucu path
+            Color.YELLOW, 
+            true // Evet bu highlight
+        );
+        wordHighlightBtn.setTooltip(new Tooltip("Metin Vurgu Rengi"));
 
         alignLeftBtn = new ToggleButton();
         alignLeftBtn
@@ -407,7 +428,7 @@ public class MainApp extends Application {
                 new Separator(),
                 fontFamilyCombo, fontSizeCombo,
                 new Separator(),
-                textColorPicker, highlightPicker,
+                wordColorBtn,wordHighlightBtn,
                 new Separator(),
                 insertImageBtn, insertTableBtn,
                 new Separator(),
@@ -416,6 +437,106 @@ public class MainApp extends Application {
                 
         );
         return toolBar;
+    }
+    
+    
+    private MenuButton createWordColorButton(String iconPath, Color defaultColor, boolean isHighlight) {
+        MenuButton menuBtn = new MenuButton();
+        menuBtn.getStyleClass().add("word-color-button"); // CSS için sınıf
+
+        // --- 1. İKON TASARIMI (Üstte ikon, altta renk çubuğu) ---
+        VBox iconContainer = new VBox(0); // Arada boşluk yok
+        iconContainer.setAlignment(javafx.geometry.Pos.CENTER);
+
+        SVGPath icon = new SVGPath();
+        icon.setContent(iconPath);
+        icon.getStyleClass().add("icon");
+        
+        // Altındaki renk çubuğu (Dikdörtgen)
+        javafx.scene.shape.Rectangle colorBar = new javafx.scene.shape.Rectangle(20, 4);
+        colorBar.setFill(defaultColor); // Varsayılan renk
+
+        iconContainer.getChildren().addAll(icon, colorBar);
+        menuBtn.setGraphic(iconContainer);
+
+        // --- 2. RENK IZGARASI (POPUP MENÜ) ---
+        CustomMenuItem customMenuItem = new CustomMenuItem();
+        customMenuItem.setHideOnClick(false); // Renk seçince biz kapatacağız
+
+        VBox popupContent = new VBox(5);
+        popupContent.setPadding(new Insets(10));
+        popupContent.setStyle("-fx-background-color: white; -fx-border-color: #e1dfdd;");
+
+        // Başlık (Theme Colors vb.)
+        Label header = new Label(isHighlight ? "Vurgu Renkleri" : "Yazı Renkleri");
+        header.setStyle("-fx-font-weight: bold; -fx-font-size: 10px; -fx-text-fill: #666;");
+        popupContent.getChildren().add(header);
+
+        // Otomatik / Renk Yok Seçeneği
+        Button autoBtn = new Button(isHighlight ? "Renk Yok" : "Otomatik");
+        autoBtn.setMaxWidth(Double.MAX_VALUE);
+        autoBtn.setStyle("-fx-background-color: transparent; -fx-alignment: CENTER_LEFT;");
+        autoBtn.setOnAction(e -> {
+            Color c = isHighlight ? Color.TRANSPARENT : Color.BLACK;
+            colorBar.setFill(isHighlight ? Color.WHITE : Color.BLACK); // Bar rengini güncelle
+            
+            // Asıl işlemi yap
+            if (isHighlight) {
+                 // Highlight değişkenini güncelle ve uygula
+                 highlightPicker.setValue(Color.TRANSPARENT); 
+            } else {
+                 textColorPicker.setValue(Color.BLACK);
+            }
+            applyStyle(); // Stili uygula
+            menuBtn.hide(); // Menüyü kapat
+        });
+        popupContent.getChildren().add(autoBtn);
+
+        // Renk Izgarası (Grid)
+        GridPane colorGrid = new GridPane();
+        colorGrid.setHgap(3);
+        colorGrid.setVgap(3);
+
+        int col = 0;
+        int row = 0;
+        for (Color color : WORD_COLORS) {
+            // Renk Kutusu
+            Button colorBox = new Button();
+            colorBox.setPrefSize(20, 20);
+            colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd; -fx-cursor: hand;");
+            
+            colorBox.setOnAction(e -> {
+                colorBar.setFill(color); // Butonun altındaki çizgiyi boya
+                
+                // Gizli ColorPicker'ları güncelle (Mantık bozulmasın diye)
+                if (isHighlight) {
+                    highlightPicker.setValue(color);
+                } else {
+                    textColorPicker.setValue(color);
+                }
+                editor.requestFocus();
+                applyStyle(); // Yazıya uygula
+                menuBtn.hide();
+            });
+            
+            // Hover Efekti (Kenarlık parlasın)
+            colorBox.setOnMouseEntered(e -> colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #f2994a; -fx-border-width: 2px;"));
+            colorBox.setOnMouseExited(e -> colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd;"));
+
+            colorGrid.add(colorBox, col, row);
+            
+            col++;
+            if (col > 4) { // Her satırda 5 renk olsun
+                col = 0;
+                row++;
+            }
+        }
+        popupContent.getChildren().add(colorGrid);
+
+        customMenuItem.setContent(popupContent);
+        menuBtn.getItems().add(customMenuItem);
+
+        return menuBtn;
     }
 
     private void showFindDialog(Stage stage) {
@@ -671,15 +792,21 @@ public class MainApp extends Application {
             }
         });
     }
-
     private void applyStyle() {
-        IndexRange selection = editor.getSelection();
-        if (selection.getLength() == 0)
-            return;
-
         String style = buildStyleString();
-        editor.setStyle(selection.getStart(), selection.getEnd(), style);
+        IndexRange selection = editor.getSelection();
+
+        if (selection.getLength() > 0) {
+            editor.setStyle(selection.getStart(), selection.getEnd(), style);
+        }
+        else {
+            int caretPos = editor.getCaretPosition();
+            editor.replaceText(caretPos, caretPos, "", style);
+        }
+
+        editor.requestFocus();
     }
+
 
     private String buildStyleString() {
         StringBuilder style = new StringBuilder();
@@ -719,12 +846,14 @@ public class MainApp extends Application {
 
         // Color
         Color color = textColorPicker.getValue();
-        style.append("-fx-fill: ").append(toRgbString(color)).append("; ");
+        String hexColor= toHexString(color);
+        style.append("-fx-fill:").append(hexColor).append("; ");
+        style.append("-fx-text-fill: ").append(hexColor).append("; ");
 
         // Highlight
         Color highlight = highlightPicker.getValue();
         if (highlight != null && !highlight.equals(Color.TRANSPARENT)) {
-            style.append("-rtfx-background-color: ").append(toRgbString(highlight)).append("; ");
+            style.append("-rtfx-background-color: ").append(toHexString(highlight)).append("; ");
         }
 
         return style.toString();
@@ -732,6 +861,13 @@ public class MainApp extends Application {
 
     private String toRgbString(Color color) {
         return String.format("rgb(%d, %d, %d)",
+                (int) (color.getRed() * 255),
+                (int) (color.getGreen() * 255),
+                (int) (color.getBlue() * 255));
+    }
+    
+    private String toHexString(Color color) {
+    	return String.format("#%02X%02X%02X",
                 (int) (color.getRed() * 255),
                 (int) (color.getGreen() * 255),
                 (int) (color.getBlue() * 255));

@@ -89,3 +89,22 @@
 .color-picker .color-picker-label {
     -fx-padding: 0;
 }
+.word-color-button{
+	-fx-background-color: transparent;
+	-fx-border-color: transparent;
+	    -fx-padding: 4px;
+}
+.word-color-button:hover {
+    -fx-background-color: #f3f2f1; /* Üzerine gelince hafif gri */
+    -fx-background-radius: 3px;
+}
+
+/* Menü okunu (arrow) gizle veya küçült */
+.word-color-button .arrow-button {
+    -fx-background-color: transparent;
+}
+.word-color-button .arrow {
+    -fx-background-color: #666;
+    -fx-padding: 2px; /* Oku küçült */
+}
+

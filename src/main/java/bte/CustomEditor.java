@@ -87,4 +87,11 @@ public class CustomEditor extends GenericStyledArea<String, Either<String, Node>
         int pos = this.getCaretPosition();
         this.replace(pos, pos, Either.<String, Node>right(table), "");
     }
+
+
+    public void replaceText(int start, int end, String text, String style) {
+        replaceText(start, end, text);
+        setStyle(start, start + text.length(), style);
+    }
+
 }
