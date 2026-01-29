@@ -1,6 +1,7 @@
 /* Main Containers */
 .root {
-    -fx-accent: #1e88e5; /* Royal Blue */
+    -fx-accent: #1e88e5;
+    /* Royal Blue */
     -fx-focus-color: transparent;
     -fx-faint-focus-color: transparent;
 }
@@ -41,7 +42,8 @@
 }
 
 /* Buttons */
-.button, .toggle-button {
+.button,
+.toggle-button {
     -fx-background-color: transparent;
     -fx-background-radius: 4;
     -fx-padding: 6;
@@ -49,7 +51,8 @@
     -fx-transition: 0.2s;
 }
 
-.button:hover, .toggle-button:hover {
+.button:hover,
+.toggle-button:hover {
     -fx-background-color: #e8eaed;
 }
 
@@ -89,13 +92,16 @@
 .color-picker .color-picker-label {
     -fx-padding: 0;
 }
-.word-color-button{
-	-fx-background-color: transparent;
-	-fx-border-color: transparent;
-	    -fx-padding: 4px;
+
+.word-color-button {
+    -fx-background-color: transparent;
+    -fx-border-color: transparent;
+    -fx-padding: 4px;
 }
+
 .word-color-button:hover {
-    -fx-background-color: #f3f2f1; /* Üzerine gelince hafif gri */
+    -fx-background-color: #f3f2f1;
+    /* Üzerine gelince hafif gri */
     -fx-background-radius: 3px;
 }
 
@@ -103,8 +109,14 @@
 .word-color-button .arrow-button {
     -fx-background-color: transparent;
 }
+
 .word-color-button .arrow {
     -fx-background-color: #666;
-    -fx-padding: 2px; /* Oku küçült */
+    -fx-padding: 2px;
+    /* Oku küçült */
 }
 
+/* Text Editor Caret (Cursor) */
+.styled-text-area .caret {
+    -fx-stroke-width: 2px;
+}

@@ -61,13 +61,18 @@ public class MainApp extends Application {
     private ColorPicker highlightPicker;
     private Button insertImageBtn;
     private Button insertTableBtn;
-    
+
     private final Color[] WORD_COLORS = {
-        Color.web("#000000"), Color.web("#44546A"), Color.web("#5B9BD5"), Color.web("#ED7D31"), Color.web("#A5A5A5"),
-        Color.web("#FFC000"), Color.web("#4472C4"), Color.web("#70AD47"), Color.web("#FF0000"), Color.web("#7030A0"),
-        Color.web("#F2F2F2"), Color.web("#D6DCE4"), Color.web("#DDEBF7"), Color.web("#FBE5D6"), Color.web("#E7E6E6"),
-        Color.web("#FFF2CC"), Color.web("#D9E1F2"), Color.web("#E2EFDA"), Color.web("#FFCCCC"), Color.web("#EAD1DC")
+            Color.web("#000000"), Color.web("#44546A"), Color.web("#5B9BD5"), Color.web("#ED7D31"),
+            Color.web("#A5A5A5"),
+            Color.web("#FFC000"), Color.web("#4472C4"), Color.web("#70AD47"), Color.web("#FF0000"),
+            Color.web("#7030A0"),
+            Color.web("#F2F2F2"), Color.web("#D6DCE4"), Color.web("#DDEBF7"), Color.web("#FBE5D6"),
+            Color.web("#E7E6E6"),
+            Color.web("#FFF2CC"), Color.web("#D9E1F2"), Color.web("#E2EFDA"), Color.web("#FFCCCC"), Color.web("#EAD1DC")
     };
+
+    private String currentTypingStyle = "";
 
     @Override
     public void start(Stage stage) {
@@ -75,12 +80,6 @@ public class MainApp extends Application {
         editor = new CustomEditor();
         editor.setWrapText(true);
         editor.setStyle("-fx-font-family: 'Segoe UI'; -fx-font-size: 14px;");
-
-        // Track changes
-        editor.textProperty().addListener((obs, oldText, newText) -> {
-            isDirty = true;
-            updateWordCount();
-        });
 
         VBox pageContainer = createPageView();
         // Layout
@@ -118,6 +117,28 @@ public class MainApp extends Application {
         // Keyboard shortcuts
         setupKeyboardShortcuts(scene, stage);
 
+        // Başlangıç stilini ayarla
+        currentTypingStyle = buildStyleString();
+
+        // Yeni yazılan metne stil uygula - RichTextFX için doğru yaklaşım
+        editor.multiPlainChanges()
+                .subscribe(changes -> {
+                    for (var change : changes) {
+                        if (!change.getInserted().isEmpty()) {
+                            int pos = change.getPosition();
+                            int length = change.getInserted().length();
+                            // Platform.runLater kullanmadan direkt uygula
+                            editor.setStyle(pos, pos + length, currentTypingStyle);
+                        }
+                    }
+                });
+
+        // Metin değişikliklerini takip et
+        editor.textProperty().addListener((obs, oldText, newText) -> {
+            isDirty = true;
+            updateWordCount();
+        });
+
         stage.setTitle("Burak's Word Processor");
         stage.setScene(scene);
         stage.setOnCloseRequest(e -> {
@@ -129,9 +150,6 @@ public class MainApp extends Application {
 
         editor.requestFocus();
     }
-    
-    
-    
 
     private VBox createPageView() {
         VBox pageContainer = new VBox();
@@ -277,7 +295,6 @@ public class MainApp extends Application {
         ToolBar toolBar = new ToolBar();
         toolBar.getStyleClass().add("tool-bar");
 
-
         textColorPicker = new ColorPicker(Color.BLACK);
         highlightPicker = new ColorPicker(Color.TRANSPARENT);
 
@@ -343,19 +360,21 @@ public class MainApp extends Application {
                 superBtn.setSelected(false);
             applyStyle();
         });
-     // 1. Yazı Rengi Butonu (A harfi ikonu)
+        // 1. Yazı Rengi Butonu (A harfi ikonu)
         MenuButton wordColorBtn = createWordColorButton(
-            "M0 20h24v4H0z M11 3L5.5 17h2.25l1.12-3h6.25l1.12 3h2.25L13 3h-2zm-1.38 11L12 5.67 14.38 14H9.62z", // A harfi path
-            Color.RED, 
-            false // Highlight değil
+                "M0 20h24v4H0z M11 3L5.5 17h2.25l1.12-3h6.25l1.12 3h2.25L13 3h-2zm-1.38 11L12 5.67 14.38 14H9.62z", // A
+                                                                                                                    // harfi
+                                                                                                                    // path
+                Color.RED,
+                false // Highlight değil
         );
         wordColorBtn.setTooltip(new Tooltip("Yazı Rengi"));
 
         // 2. Highlight Butonu (Kalem ikonu)
         MenuButton wordHighlightBtn = createWordColorButton(
-            "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z", // Kalem ucu path
-            Color.YELLOW, 
-            true // Evet bu highlight
+                "M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z", // Kalem ucu path
+                Color.YELLOW,
+                true // Evet bu highlight
         );
         wordHighlightBtn.setTooltip(new Tooltip("Metin Vurgu Rengi"));
 
@@ -418,8 +437,8 @@ public class MainApp extends Application {
         });
 
         toolBar.getItems().addAll(
-                themeToggle,      // <--- BAK BURAYA, EN BAŞA KOYDUK
-                new Separator(),  // Araya şık bir çizgi çektik
+                themeToggle, // <--- BAK BURAYA, EN BAŞA KOYDUK
+                new Separator(), // Araya şık bir çizgi çektik
 
                 // Diğerleri sırayla devam ediyor...
                 boldBtn, italicBtn, underlineBtn, strikeBtn,
@@ -428,18 +447,16 @@ public class MainApp extends Application {
                 new Separator(),
                 fontFamilyCombo, fontSizeCombo,
                 new Separator(),
-                wordColorBtn,wordHighlightBtn,
+                wordColorBtn, wordHighlightBtn,
                 new Separator(),
                 insertImageBtn, insertTableBtn,
                 new Separator(),
                 alignLeftBtn, alignCenterBtn, alignRightBtn, alignJustifyBtn
 
-                
         );
         return toolBar;
     }
-    
-    
+
     private MenuButton createWordColorButton(String iconPath, Color defaultColor, boolean isHighlight) {
         MenuButton menuBtn = new MenuButton();
         menuBtn.getStyleClass().add("word-color-button"); // CSS için sınıf
@@ -451,7 +468,7 @@ public class MainApp extends Application {
         SVGPath icon = new SVGPath();
         icon.setContent(iconPath);
         icon.getStyleClass().add("icon");
-        
+
         // Altındaki renk çubuğu (Dikdörtgen)
         javafx.scene.shape.Rectangle colorBar = new javafx.scene.shape.Rectangle(20, 4);
         colorBar.setFill(defaultColor); // Varsayılan renk
@@ -479,13 +496,13 @@ public class MainApp extends Application {
         autoBtn.setOnAction(e -> {
             Color c = isHighlight ? Color.TRANSPARENT : Color.BLACK;
             colorBar.setFill(isHighlight ? Color.WHITE : Color.BLACK); // Bar rengini güncelle
-            
+
             // Asıl işlemi yap
             if (isHighlight) {
-                 // Highlight değişkenini güncelle ve uygula
-                 highlightPicker.setValue(Color.TRANSPARENT); 
+                // Highlight değişkenini güncelle ve uygula
+                highlightPicker.setValue(Color.TRANSPARENT);
             } else {
-                 textColorPicker.setValue(Color.BLACK);
+                textColorPicker.setValue(Color.BLACK);
             }
             applyStyle(); // Stili uygula
             menuBtn.hide(); // Menüyü kapat
@@ -503,11 +520,12 @@ public class MainApp extends Application {
             // Renk Kutusu
             Button colorBox = new Button();
             colorBox.setPrefSize(20, 20);
-            colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd; -fx-cursor: hand;");
-            
+            colorBox.setStyle(
+                    "-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd; -fx-cursor: hand;");
+
             colorBox.setOnAction(e -> {
                 colorBar.setFill(color); // Butonun altındaki çizgiyi boya
-                
+
                 // Gizli ColorPicker'ları güncelle (Mantık bozulmasın diye)
                 if (isHighlight) {
                     highlightPicker.setValue(color);
@@ -518,13 +536,15 @@ public class MainApp extends Application {
                 applyStyle(); // Yazıya uygula
                 menuBtn.hide();
             });
-            
+
             // Hover Efekti (Kenarlık parlasın)
-            colorBox.setOnMouseEntered(e -> colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #f2994a; -fx-border-width: 2px;"));
-            colorBox.setOnMouseExited(e -> colorBox.setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd;"));
+            colorBox.setOnMouseEntered(e -> colorBox.setStyle("-fx-background-color: " + toHexString(color)
+                    + "; -fx-border-color: #f2994a; -fx-border-width: 2px;"));
+            colorBox.setOnMouseExited(e -> colorBox
+                    .setStyle("-fx-background-color: " + toHexString(color) + "; -fx-border-color: #e1dfdd;"));
 
             colorGrid.add(colorBox, col, row);
-            
+
             col++;
             if (col > 4) { // Her satırda 5 renk olsun
                 col = 0;
@@ -792,6 +812,7 @@ public class MainApp extends Application {
             }
         });
     }
+
     private void applyStyle() {
         String style = buildStyleString();
         IndexRange selection = editor.getSelection();
@@ -799,14 +820,17 @@ public class MainApp extends Application {
         if (selection.getLength() > 0) {
             editor.setStyle(selection.getStart(), selection.getEnd(), style);
         }
-        else {
-            int caretPos = editor.getCaretPosition();
-            editor.replaceText(caretPos, caretPos, "", style);
-        }
+
+        // Her durumda gelecekteki yazılar için stili güncelle
+        currentTypingStyle = style;
+
+        // İmleç rengini de değiştir (Word Web gibi)
+        Color caretColor = textColorPicker.getValue();
+        editor.setStyle(String.format("-fx-font-family: 'Segoe UI'; -fx-font-size: 14px; " +
+                "caret-color: %s;", toHexString(caretColor)));
 
         editor.requestFocus();
     }
-
 
     private String buildStyleString() {
         StringBuilder style = new StringBuilder();
@@ -846,14 +870,14 @@ public class MainApp extends Application {
 
         // Color
         Color color = textColorPicker.getValue();
-        String hexColor= toHexString(color);
-        style.append("-fx-fill:").append(hexColor).append("; ");
+        String hexColor = toHexString(color);
+        style.append("-fx-fill: ").append(hexColor).append("; ");
         style.append("-fx-text-fill: ").append(hexColor).append("; ");
 
         // Highlight
         Color highlight = highlightPicker.getValue();
         if (highlight != null && !highlight.equals(Color.TRANSPARENT)) {
-            style.append("-rtfx-background-color: ").append(toHexString(highlight)).append("; ");
+            style.append("-fx-background-color: ").append(toHexString(highlight)).append("; ");
         }
 
         return style.toString();
@@ -865,9 +889,9 @@ public class MainApp extends Application {
                 (int) (color.getGreen() * 255),
                 (int) (color.getBlue() * 255));
     }
-    
+
     private String toHexString(Color color) {
-    	return String.format("#%02X%02X%02X",
+        return String.format("#%02X%02X%02X",
                 (int) (color.getRed() * 255),
                 (int) (color.getGreen() * 255),
                 (int) (color.getBlue() * 255));
